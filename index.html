@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monster Lapar – Game Berhitung Seru</title>
+<style>
+:root{--bg:#3d1f78;--bg2:#5b2a9e;--card:#ffffff;--ink:#2a1457;--lime:#b7f34a;--orange:#ff8a3d;--pink:#ff5ca8;--bad:#e5365a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d0f3e;--bg2:#321a66;--card:#f4efff}}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(circle at 50% 0,var(--bg2),var(--bg));color:var(--ink);font-family:"Trebuchet MS","Arial Rounded MT Bold",system-ui,sans-serif;font-weight:800;display:flex;justify-content:center;-webkit-tap-highlight-color:transparent;user-select:none}
+main{width:100%;max-width:480px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.hide{display:none!important}
+.top{display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:1.1rem}
+.pill{background:rgba(255,255,255,.16);border-radius:99px;padding:6px 14px}
+.bar{height:10px;background:rgba(255,255,255,.2);border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--lime);transition:width 1s linear}
+.stage{text-align:center;position:relative}
+#mon{font-size:7rem;line-height:1;transition:transform .2s;filter:drop-shadow(0 8px 0 rgba(0,0,0,.18))}
+#mon.pop{transform:scale(1.2) rotate(-6deg)}
+#mon.shake{animation:sh .35s}
+@keyframes sh{25%{transform:translateX(-12px)}75%{transform:translateX(12px)}}
+.card{background:var(--card);border-radius:26px;padding:18px;text-align:center;box-shadow:0 8px 0 rgba(0,0,0,.2)}
+#say{font-size:1.35rem;margin:0 0 10px}
+#plate{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;font-size:2rem;min-height:2.6rem}
+#plate.many{font-size:1.5rem}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.choices button,.btn{font:inherit;border:0;border-radius:22px;color:var(--ink);cursor:pointer;box-shadow:0 7px 0 rgba(0,0,0,.25)}
+.choices button{font-size:2.6rem;padding:18px 0;background:var(--lime)}
+.choices button:nth-child(2){background:var(--orange)}
+.choices button:nth-child(3){background:var(--pink)}
+.choices button:active,.btn:active{transform:translateY(5px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.choices button.bad{background:var(--bad);color:#fff}
+.btn{font-size:1.3rem;padding:14px 22px;background:var(--lime);width:100%;margin-top:10px}
+.btn.alt{background:#fff}
+h1{margin:0;font-size:2.2rem;line-height:1.1}
+p{margin:8px 0;font-weight:700;line-height:1.4}
+.big{font-size:3.4rem}
+#toast{position:absolute;left:0;right:0;top:0;color:var(--lime);font-size:1.6rem;opacity:0;transition:opacity .2s}
+#toast.on{opacity:1}
+:focus-visible{outline:4px solid #fff;outline-offset:3px}
+@media (prefers-reduced-motion:reduce){#mon,.bar i{transition:none}#mon.shake{animation:none}}
+</style>
+</head>
+<body>
+<main>
+<section id="home" class="card" style="margin-top:6vh">
+<div class="big" aria-hidden="true">👾</div>
+<h1>Monster Lapar</h1>
+<p>Gobo selalu lapar! Hitung buah yang kurang, lalu beri makan Gobo secepat kilat.</p>
+<p>Rekor terbaik: <span id="best0">0</span></p>
+<button class="btn" id="go">Main sekarang</button>
+</section>
+
+<section id="game" class="hide">
+<div class="top"><span class="pill">⭐ <b id="sc">0</b></span><span class="pill" id="st">🔥 0</span><span class="pill">⏱ <b id="tm">60</b></span></div>
+<div class="bar" style="margin:12px 0"><i id="bar"></i></div>
+<div class="stage"><div id="toast"></div><div id="mon" aria-hidden="true">👾</div></div>
+<div class="card" style="margin:12px 0">
+<p id="say"></p>
+<div id="plate" aria-hidden="true"></div>
+</div>
+<div class="choices" id="ch"></div>
+</section>
+
+<section id="end" class="card hide" style="margin-top:6vh">
+<div class="big" id="face">😋</div>
+<h1 id="etitle">Gobo kenyang!</h1>
+<p>Skor kamu</p>
+<div class="big" id="esc">0</div>
+<p id="emsg"></p>
+<button class="btn" id="again">Main lagi</button>
+<button class="btn alt" id="share">Bagikan skor</button>
+</section>
+</main>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var fruits=['🍎','🍌','🍓','🍇','🍊','🍉','🍪'];
+var happy=['😋','🤩','😍','🥳'],S,tick,lock=false,ans=0,best=0,ctx=null;
+try{best=+localStorage.getItem('gobo_best')||0}catch(e){}
+$('best0').textContent=best;
+function rnd(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function beep(f,d){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();var o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=f;o.type='sine';g.gain.value=.12;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+d)}catch(e){}}
+function show(id){['home','game','end'].forEach(function(x){$(x).classList.toggle('hide',x!==id)})}
+function hud(){$('sc').textContent=S.score;$('st').textContent='🔥 '+S.streak;$('tm').textContent=S.time;$('bar').style.width=Math.max(0,S.time/60*100)+'%'}
+function start(){S={score:0,streak:0,time:60,ok:0,max:0};show('game');hud();clearInterval(tick);
+tick=setInterval(function(){S.time--;hud();if(S.time<=0)finish()},1000);next()}
+function next(){
+var lvl=Math.min(3,1+Math.floor(S.ok/5)),max=[0,6,10,15][lvl],f=fruits[rnd(0,fruits.length-1)],a,t,b,html='',txt;
+if(lvl>=2&&Math.random()<.5){a=rnd(4,max);b=rnd(1,a-1);ans=a-b;txt='Ada '+a+' '+f+'. Gobo makan '+b+'. Sisa berapa?';html=rep(f,a)}
+else{t=rnd(3,max);a=rnd(1,t-1);ans=t-a;txt='Gobo mau '+t+' '+f+'. Di piring ada '+a+'. Kurang berapa?';html=rep(f,a)+' ➕ ❓'}
+$('say').textContent=txt;var p=$('plate');p.innerHTML=html;p.className=a>10?'many':'';
+var set=[ans];while(set.length<3){var c=Math.max(0,Math.min(20,ans+rnd(-3,3)));if(set.indexOf(c)<0)set.push(c)}
+set.sort(function(){return Math.random()-.5});
+var ch=$('ch');ch.innerHTML='';
+set.forEach(function(v){var b=document.createElement('button');b.textContent=v;b.addEventListener('click',function(){pick(v,b)});ch.appendChild(b)});
+$('mon').textContent='👾';lock=false}
+function rep(f,n){return new Array(n+1).join(f)}
+function pick(v,b){
+if(lock||!S||S.time<=0)return;lock=true;var m=$('mon');
+if(v===ans){S.ok++;S.streak++;S.max=Math.max(S.max,S.streak);var g=10+Math.min(S.streak,5)*2;S.score+=g;S.time=Math.min(60,S.time+2);
+m.textContent=happy[rnd(0,3)];m.className='pop';beep(660,.12);setTimeout(function(){beep(880,.15)},110);
+toast(S.streak>=3?'🔥 Kombo x'+S.streak+'! +'+g:'Enak! +'+g)}
+else{S.streak=0;S.time=Math.max(0,S.time-3);b.classList.add('bad');m.textContent='😵';m.className='shake';beep(180,.3);toast('Ups! Jawabannya '+ans)}
+hud();setTimeout(function(){m.className='';if(S.time>0)next();else finish()},650)}
+function toast(t){var e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(function(){e.classList.remove('on')},600)}
+function finish(){clearInterval(tick);var rec=S.score>best;if(rec){best=S.score;try{localStorage.setItem('gobo_best',best)}catch(e){}}
+$('esc').textContent=S.score;$('best0').textContent=best;
+$('face').textContent=S.score>=300?'🤩':S.score>=150?'😋':'🙂';
+$('etitle').textContent=rec&&S.score>0?'Rekor baru!':S.score>=150?'Gobo kenyang!':'Gobo masih lapar…';
+$('emsg').textContent='Benar '+S.ok+' soal. Kombo terbaik '+S.max+'. Rekor: '+best+'.';show('end')}
+$('go').addEventListener('click',start);$('again').addEventListener('click',start);
+$('share').addEventListener('click',function(){
+var t='Aku dapat skor '+S.score+' di Monster Lapar! Bisa kalahkan aku? 👾';
+if(navigator.share){navigator.share({title:'Monster Lapar',text:t,url:location.href}).catch(function(){})}
+else if(navigator.clipboard){navigator.clipboard.writeText(t+' '+location.href).then(function(){$('share').textContent='Tersalin!'}).catch(function(){})}});
+})();
+</script>
+</body>
+</html>
